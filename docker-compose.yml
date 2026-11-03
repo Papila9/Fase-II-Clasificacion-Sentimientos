@@ -1,0 +1,60 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      HF_HOME: /home/app/.cache/huggingface
+    volumes:
+      - huggingface-cache:/home/app/.cache/huggingface
+    expose:
+      - "8000"
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    networks:
+      app-internal: {}
+      model-egress:
+        gw_priority: 1
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import json, urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)); raise SystemExit(0 if data.get('model_loaded') else 1)"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10m
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      API_URL: http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-8501}:8501"
+    networks:
+      app-internal: {}
+      # Red bridge adicional para que Docker Desktop publique el puerto en el host.
+      frontend-ingress: {}
+    restart: unless-stopped
+
+networks:
+  app-internal:
+    driver: bridge
+    internal: true
+  # La interfaz necesita una red no interna para el reenvío localhost de Docker Desktop.
+  # FastAPI no se conecta a esta red, por lo que no queda expuesto en ella.
+  frontend-ingress:
+    driver: bridge
+  # Salida de red del backend para descargar el checkpoint de Hugging Face.
+  model-egress:
+    driver: bridge
+
+volumes:
+  huggingface-cache:
