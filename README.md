@@ -19,7 +19,8 @@ Streamlit y FastAPI comparten la red privada `app-internal`. Streamlit también 
 backend/app/       API, esquemas y módulo de inferencia
 frontend/          aplicación Streamlit y cliente HTTP
 tests/             pruebas unitarias con mocks
-docs/              guía futura de nube y validación
+scripts/           pruebas extremas contra la API real (pruebas_extremas.py)
+docs/              manual de despliegue en nube y documentos de validación (Word/Markdown)
 docker-compose.yml ejecución local de los dos servicios
 ```
 
@@ -114,7 +115,17 @@ python -m pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-La suite usa un analizador simulado para verificar los contratos y no mide el rendimiento ni la precisión del modelo. En la ejecución del 2026-11-02 se aprobaron 13 tests. También se validaron Compose, la carga del modelo, una predicción real y la interacción desde Streamlit en el navegador. El registro y los límites de esta validación están en [validación y pruebas](docs/validacion-y-pruebas.md).
+La suite usa un analizador simulado para verificar los contratos y no mide el rendimiento ni la precisión del modelo. En la ejecución del 2026-11-02 se aprobaron 13 tests. También se validaron Compose, la carga del modelo, una predicción real y la interacción desde Streamlit en el navegador. El registro y los límites de esta validación están en el [documento de validación y pruebas](docs/Validacion_pruebas_Fase_II_actualizado.docx).
+
+### Pruebas extremas contra el modelo real
+
+Con los contenedores en ejecución (`docker compose up --build`), en otra terminal:
+
+```bash
+python scripts/pruebas_extremas.py
+```
+
+El script usa solo la biblioteca estándar y envía a `http://localhost:8000` casos de inglés, español, emojis, sarcasmo, texto largo e inválidos. El backend configura truncamiento a 128 tokens; esta batería verifica la respuesta HTTP ante el texto largo, pero no inspecciona directamente la cantidad de tokens procesados. La ejecución documentada produjo 23 respuestas con el código HTTP esperado. Los resultados están en [resultados_pruebas_extremas.md](resultados_pruebas_extremas.md). Usa `--api-url` para otra dirección y `--salida resultados.md` para guardar la tabla.
 
 ## Limitaciones
 
@@ -127,7 +138,6 @@ La suite usa un analizador simulado para verificar los contratos y no mide el re
 
 ## Documentos
 
-- [Manual futuro de despliegue en nube](docs/despliegue-nube.md)
-- [Documento de validación y pruebas](docs/validacion-y-pruebas.md)
-- Versiones Word listas para entregar: [manual de despliegue](docs/Manual-despliegue-nube.docx) y [validación y pruebas](docs/Validacion-y-pruebas.docx).
-- Para regenerar los Word a partir de los Markdown: `python docs/generar_documentos_word.py`.
+- [Manual de despliegue en la nube (Word)](docs/Manual-despliegue-nube.docx)
+- [Documento de validación con pruebas extremas (Word)](docs/Validacion_pruebas_Fase_II_actualizado.docx)
+- [Resultados completos de las pruebas extremas (Markdown)](resultados_pruebas_extremas.md)
