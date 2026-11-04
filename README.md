@@ -134,13 +134,14 @@ El script usa solo la biblioteca estándar y envía a `http://localhost:8000` ca
 - Se limita el texto a 5,000 caracteres y el tokenizador trunca a 128 tokens.
 - Si Hugging Face no está disponible durante una caché vacía, el backend no inicia.
 - Las pruebas simuladas comprueban API/cliente, no la clasificación del checkpoint.
-- El manual de nube es una estrategia futura; no se ha desplegado nada.
+- El manual de nube describe una estrategia propuesta; no se ha realizado un despliegue.
 
 ## Documentos
 
-- [Manual de despliegue en la nube (Word, corregido)](docs/Manual-despliegue-nube_corregido.docx)
+- [Manual de despliegue en la nube (Word)](docs/Manual_Despliegue_Fase_II.docx)
+- [Índice de documentación](docs/README.md)
 - [Manual de despliegue en la nube (Markdown)](docs/despliegue-nube.md)
-- [Documento institucional de validación actualizado (Word)](docs/Validacion_pruebas_Fase_II_UV_actualizado.docx)
+- [Documento institucional de validación (Word)](docs/Validacion_Pruebas_Fase_II.docx)
 - [Script de pruebas extremas](scripts/pruebas_extremas.py)
-- [Registro de validación actualizado (Markdown)](docs/validacion-y-pruebas.md)
+- [Registro de validación (Markdown)](docs/validacion-y-pruebas.md)
 - [Resultados completos de las pruebas extremas (Markdown)](resultados_pruebas_extremas.md)

@@ -1,6 +1,10 @@
-# Manual futuro de despliegue en Azure Container Apps
+# Manual de despliegue de la solución de clasificación de sentimientos
 
-> Este procedimiento es una propuesta reproducible. No se han ejecutado comandos de Azure, no se han creado recursos cloud y no se ha desplegado la aplicación.
+> La estrategia de despliegue en Azure documentada aquí es una propuesta reproducible. No se ha ejecutado en un entorno productivo; no se ejecutaron comandos de Azure ni se crearon recursos cloud.
+
+## Documento Word
+
+[Manual institucional en Word](Manual_Despliegue_Fase_II.docx).
 
 ## Arquitectura
 
@@ -98,7 +102,7 @@ $WEB_FQDN = az containerapp show --name $WEB --resource-group $RG --query proper
 
 Con `allow-insecure false`, el ingress público redirige HTTP a HTTPS. Solo el frontend tiene `external` habilitado; la API permanece privada.
 
-### 7. Validar una futura implementación
+### 7. Validar la implementación
 
 ```powershell
 az containerapp show --name $API --resource-group $RG --query properties.configuration.ingress --output json
@@ -126,4 +130,4 @@ Evalúa precios por región de CPU/memoria, réplicas, ACR, Azure Files si se us
 
 BERTweet fue preparado para publicaciones de Twitter en inglés. Las salidas de los casos puntuales no demuestran calidad en español o comentarios de aerolíneas. Antes de uso real hace falta una evaluación representativa etiquetada y revisión de privacidad/licencia.
 
-**Estado:** este manual describe únicamente un procedimiento futuro. No se ejecutaron comandos de Azure ni se realizó un despliegue.
+**Estado:** esta es una estrategia reproducible propuesta. No se ha ejecutado en un entorno productivo; no se ejecutaron comandos de Azure ni se realizó un despliegue.

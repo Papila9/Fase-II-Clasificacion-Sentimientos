@@ -1,11 +1,11 @@
 # Resultados de pruebas extremas de la API
 
-- Fecha de ejecuci?n: 2026-11-03.
+- Fecha de ejecución: 2026-11-03.
 - Destino: API FastAPI real en Docker, `http://127.0.0.1:8000`.
-- Entorno: Docker Engine 29.9.2; backend `healthy`, frontend activo; `GET /health` devolvi? `{"status":"ok","model_loaded":true}`.
-- Resultado de contrato HTTP: 23 casos ejecutados; los 23 c?digos obtenidos coincidieron con los esperados; 0 discrepancias.
-- La suite automatizada local ejecutada el mismo d?a obtuvo 13 aprobadas y 1 warning de deprecaci?n de Starlette/AnyIO.
-- Las etiquetas, sentimientos y puntuaciones son salidas observadas del modelo, no una comparaci?n con etiquetas verdaderas. Estas pruebas no miden precisi?n ni exactitud.
+- Entorno: Docker Engine 29.9.2; backend `healthy`, frontend activo; `GET /health` devolvió `{"status":"ok","model_loaded":true}`.
+- Resultado de contrato HTTP: 23 casos ejecutados; los 23 códigos obtenidos coincidieron con los esperados; 0 discrepancias.
+- La suite automatizada local ejecutada el mismo día obtuvo 13 aprobadas y 1 warning de deprecación de Starlette/AnyIO.
+- Las etiquetas, sentimientos y puntuaciones son salidas observadas del modelo, no una comparación con etiquetas verdaderas. Estas pruebas no miden precisión ni exactitud.
 
 ## Resultados por caso
 
@@ -32,22 +32,22 @@
 | C19 | Solo espacios y saltos de línea |    \n   | 422 | 422 | — | — | — | El texto no puede estar vacío ni contener solo espacios. |
 | C20 | Campo text ausente | (sin campo) | 422 | 422 | — | — | — | La solicitud debe incluir el campo 'text'. |
 | C21 | text no es cadena | 123 | 422 | 422 | — | — | — | Solicitud inválida. Envía un JSON con el campo 'text' como texto. |
-| C23 | Cuerpo de solicitud vacío |  | 422 | 422 | — | — | — | La solicitud debe incluir el campo 'text'. |
 | C22 | JSON inválido | {esto no es json | 422 | 422 | — | — | — | Solicitud inválida. Envía un JSON con el campo 'text' como texto. |
+| C23 | Cuerpo de solicitud vacío |  | 422 | 422 | — | — | — | La solicitud debe incluir el campo 'text'. |
 
-## Metodolog?a
+## Metodología
 
-Se confirm? la configuraci?n con `docker compose config --quiet`, el estado de servicios con `docker compose ps` y la disponibilidad del modelo mediante `GET /health`. Despu?s se ejecut? `scripts/pruebas_extremas.py --api-url http://127.0.0.1:8000 --salida resultados_pruebas_extremas_2026-11-03.md`. El script envi? las 23 peticiones HTTP directamente al backend Docker activo; no utiliz? mocks para esta bater?a. C23 se envi? con cuerpo HTTP de cero bytes y recibi? 422. La tabla completa registra los c?digos reales y cualquier salida JSON presente.
+Se confirmó la configuración con `docker compose config --quiet`, el estado de servicios con `docker compose ps` y la disponibilidad del modelo mediante `GET /health`. Después se ejecutó `scripts/pruebas_extremas.py --api-url http://127.0.0.1:8000 --salida resultados_pruebas_extremas_2026-11-03.md`. El script envió las 23 peticiones HTTP directamente al backend Docker activo; no utilizó mocks para esta batería. C23 se envió con cuerpo HTTP de cero bytes y recibió 422. La tabla completa registra los códigos reales y cualquier salida JSON presente.
 
-## An?lisis de observaciones
+## Análisis de observaciones
 
-- C06, comentario negativo en espa?ol, recibi? `Neutral` / `NEU` con 95.7 %. Es una observaci?n sem?nticamente inesperada que puede relacionarse con idioma o dominio; no es un error del endpoint. No hay verdad de referencia para atribuir causa ni calcular exactitud.
-- C11, emojis positivos aislados, recibi? `Neutral` / `NEU` con 90.1 %. Se registra como limitaci?n observada de esa entrada, no como fallo HTTP.
+- C06, comentario negativo en español, recibió `Neutral` / `NEU` con 95.7 %. Es una observación semánticamente inesperada que puede relacionarse con idioma o dominio; no es un error del endpoint. No hay verdad de referencia para atribuir causa ni calcular exactitud.
+- C11, emojis positivos aislados, recibió `Neutral` / `NEU` con 90.1 %. Se registra como limitación observada de esa entrada, no como fallo HTTP.
 - C08 (sarcasmo) fue clasificado `Negativo` / `NEG` con 96.9 %; un solo ejemplo no permite concluir capacidad general para detectar sarcasmo.
-- C15 (1,760 caracteres, descrito como superior a 128 tokens) y C16 (5,000 caracteres) recibieron HTTP 200. El proyecto configura truncamiento a 128 tokens; la bater?a no inspecciona directamente la secuencia tokenizada ni demuestra que todo el contenido largo influya en la salida.
-- C17 (5,001 caracteres), C18 (vac?o), C19 (solo espacios), C20 (campo ausente), C21 (tipo incorrecto), C22 (JSON mal formado) y C23 (cuerpo vac?o) recibieron HTTP 422 seg?n lo esperado.
-- Las puntuaciones softmax mostradas no son confianza calibrada. No se compararon predicciones con etiquetas de referencia; por tanto, no se midieron precisi?n, exactitud ni generalizaci?n.
+- C15 (1,760 caracteres, descrito como superior a 128 tokens) y C16 (5,000 caracteres) recibieron HTTP 200. El proyecto configura truncamiento a 128 tokens; la batería no inspecciona directamente la secuencia tokenizada ni demuestra que todo el contenido largo influya en la salida.
+- C17 (5,001 caracteres), C18 (vacío), C19 (solo espacios), C20 (campo ausente), C21 (tipo incorrecto), C22 (JSON mal formado) y C23 (cuerpo vacío) recibieron HTTP 422 según lo esperado.
+- Las puntuaciones softmax mostradas no son confianza calibrada. No se compararon predicciones con etiquetas de referencia; por tanto, no se midieron precisión, exactitud ni generalización.
 
-## Incidencia del script y correcci?n
+## Incidencia del script y corrección
 
-La primera ejecuci?n real complet? las solicitudes, pero la consola Windows con codificaci?n cp1252 no pudo imprimir algunos caracteres Unicode y el proceso termin? antes de guardar la tabla. Se ajust? `scripts/pruebas_extremas.py` para usar salida UTF-8 cuando la consola permite reconfigurarla y se repiti? la bater?a completa. El archivo de esta ejecuci?n se guard? como `resultados_pruebas_extremas_2026-11-03.md`.
+La primera ejecución real completó las solicitudes, pero la consola Windows con codificación cp1252 no pudo imprimir algunos caracteres Unicode y el proceso terminó antes de guardar la tabla. Se ajustó `scripts/pruebas_extremas.py` para usar salida UTF-8 cuando la consola permite reconfigurarla y se repitió la batería completa. El archivo de esta ejecución se guardó como `resultados_pruebas_extremas_2026-11-03.md`.

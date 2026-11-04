@@ -1,5 +1,9 @@
 # Documento de validación y pruebas
 
+## Documento institucional
+
+[Documento de validación en Word](Validacion_Pruebas_Fase_II.docx).
+
 ## Objetivo
 
 Registrar los casos diseñados para comprobar validaciones, formato de API y comunicación del cliente web con FastAPI, distinguiendo pruebas simuladas de ejecución real con contenedores y modelo.
@@ -46,7 +50,7 @@ C06 (frase negativa en español → NEU) y C11 (emojis positivos aislados → NE
 
 ## Evidencias disponibles
 
-El proyecto incluye casos automatizados; la salida de pytest es evidencia de la ejecución simulada. También se observaron `docker compose config`, `docker compose ps`, los logs de Streamlit y FastAPI, las respuestas HTTP y el resultado visible en el navegador. No se adjuntó una captura al proyecto. Las pruebas unitarias usan un analizador simulado, por lo que no demuestran por sí solas la calidad del modelo; la predicción real es una comprobación funcional puntual, no una evaluación de precisión.
+El proyecto incluye casos automatizados; la salida de pytest es evidencia de la ejecución simulada. También se observaron `docker compose config`, `docker compose ps`, los logs de Streamlit y FastAPI, las respuestas HTTP y el resultado visible en el navegador. El documento Word institucional incorpora seis imágenes de evidencia de la ejecución local. Las pruebas unitarias usan un analizador simulado, por lo que no demuestran por sí solas la calidad del modelo; la predicción real es una comprobación funcional puntual, no una evaluación de precisión.
 
 ## Conclusiones
 
