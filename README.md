@@ -115,7 +115,7 @@ python -m pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-La suite usa un analizador simulado para verificar los contratos y no mide el rendimiento ni la precisión del modelo. En la ejecución del 2026-11-02 se aprobaron 13 tests. También se validaron Compose, la carga del modelo, una predicción real y la interacción desde Streamlit en el navegador. El registro y los límites de esta validación están en el [documento de validación y pruebas](docs/Validacion_pruebas_Fase_II_actualizado.docx).
+La suite usa un analizador simulado para verificar los contratos y no mide el rendimiento ni la precisión del modelo. El 2026-11-03 se ejecutó con 13 aprobadas y 1 warning de deprecación. También se validaron Compose, la carga del modelo, una predicción real y la interacción desde Streamlit. Ese día se enviaron 23 casos extremos a la API real en Docker y los 23 códigos HTTP coincidieron con lo esperado. El informe de salida está en [resultados_pruebas_extremas.md](resultados_pruebas_extremas.md); la suite simulada y la comprobación real están diferenciadas en la documentación de validación.
 
 ### Pruebas extremas contra el modelo real
 
@@ -138,6 +138,9 @@ El script usa solo la biblioteca estándar y envía a `http://localhost:8000` ca
 
 ## Documentos
 
-- [Manual de despliegue en la nube (Word)](docs/Manual-despliegue-nube.docx)
-- [Documento de validación con pruebas extremas (Word)](docs/Validacion_pruebas_Fase_II_actualizado.docx)
+- [Manual de despliegue en la nube (Word, corregido)](docs/Manual-despliegue-nube_corregido.docx)
+- [Manual de despliegue en la nube (Markdown)](docs/despliegue-nube.md)
+- [Documento institucional de validación actualizado (Word)](docs/Validacion_pruebas_Fase_II_UV_actualizado.docx)
+- [Script de pruebas extremas](scripts/pruebas_extremas.py)
+- [Registro de validación actualizado (Markdown)](docs/validacion-y-pruebas.md)
 - [Resultados completos de las pruebas extremas (Markdown)](resultados_pruebas_extremas.md)

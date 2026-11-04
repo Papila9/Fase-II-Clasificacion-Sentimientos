@@ -1,48 +1,129 @@
-# Manual futuro de despliegue en la nube
+# Manual futuro de despliegue en Azure Container Apps
 
-> Este documento describe una estrategia futura. No se ha realizado ningún despliegue.
+> Este procedimiento es una propuesta reproducible. No se han ejecutado comandos de Azure, no se han creado recursos cloud y no se ha desplegado la aplicación.
 
-## Requerimientos técnicos
+## Arquitectura
 
-- Cuenta en un proveedor de nube con registro de imágenes y servicio de contenedores.
-- Docker y Docker Compose v2.33.1 o posterior para validar localmente la misma configuración.
-- Imagen backend con Python 3.11, FastAPI, PyTorch y Transformers; imagen frontend con Streamlit.
-- Almacenamiento persistente para la caché del modelo o una política clara de descarga al iniciar.
-- Memoria suficiente para cargar BERTweet. Medir consumo real antes de seleccionar el tamaño de instancia.
-- HTTPS, dominio y certificado TLS para cualquier acceso público.
-- Revisar las condiciones de licencia: la ficha del modelo limita su uso a investigación científica y fines no comerciales.
+El navegador se conecta por HTTPS al frontend Streamlit (ingress externo, puerto 8501). Streamlit llama a FastAPI por HTTP dentro del mismo Azure Container Apps Environment, usando el FQDN interno. FastAPI usa ingress interno (puerto 8000) y no se publica directamente en Internet. El backend descarga el checkpoint público de Hugging Face en su primer inicio. El flujo interno en HTTP es el recomendado para el app name/FQDN interno de Container Apps; HTTPS se termina en el ingress público del frontend. Microsoft indica que las llamadas entre apps del mismo entorno permanecen dentro de ese entorno y documenta el uso de `http://<APP_NAME>` para llamadas internas ([comunicación entre apps](https://learn.microsoft.com/en-us/azure/container-apps/connect-apps), [ingress](https://learn.microsoft.com/en-us/azure/container-apps/ingress)).
 
-## Arquitectura propuesta
+## Requisitos
 
-El navegador se conectaría al frontend Streamlit publicado. El frontend llamaría al servicio FastAPI mediante una red privada del proveedor. El backend descargaría el modelo público de Hugging Face en el primer inicio y podría conservar la caché en almacenamiento persistente. Solo el frontend estaría expuesto a Internet; la API quedaría privada salvo que se defina autenticación y una necesidad justificada.
+- Suscripción Azure activa, Azure CLI actualizado y permisos para crear grupo de recursos, ACR, identidad administrada y Container Apps.
+- Dockerfiles existentes en `backend/Dockerfile` y `frontend/Dockerfile`; ejecutar desde la raíz del repositorio.
+- Región con cuotas disponibles para Azure Container Apps y Azure Container Registry.
+- Dimensionamiento inicial por validar: backend 2 vCPU / 4 GiB; frontend 0.5 vCPU / 1 GiB. Medir consumo y latencia antes de uso real.
+- Considerar costos de cómputo, ACR, logs, transferencia y almacenamiento persistente de la caché.
 
-## Estrategia basada en contenedores
+## Procedimiento propuesto en PowerShell
 
-1. Ejecutar pruebas automatizadas y revisión de seguridad local.
-2. Construir imágenes reproducibles del backend y frontend usando versiones fijadas.
-3. Etiquetarlas con versión inmutable y publicarlas en un registro privado.
-4. Crear los servicios en una red privada, con frontend expuesto mediante HTTPS y API accesible solo desde el frontend.
-5. Configurar almacenamiento/cache persistente para reducir descargas repetidas del modelo.
-6. Probar health checks, logs, reinicio, latencia y límites de recursos en un entorno de prueba.
-7. Promover la misma versión de imagen a producción y documentar rollback.
+Los comandos siguientes son una guía futura. Sustituye los valores de ejemplo y revisa cuotas y costos antes de ejecutar.
 
-## Configuración y variables
+### 1. Preparar Azure CLI y recursos base
 
-Las variables actuales de Compose (`FRONTEND_PORT`, `BACKEND_PORT`) solo controlan puertos locales. En nube, usar la configuración del proveedor para puertos, URL privada de API, tamaño máximo de texto, logging y ubicación de caché. Si en el futuro se requiere `HF_TOKEN` (el modelo revisado es público), almacenarlo en un gestor de secretos y nunca en Git, imagen o logs. No se han agregado tokens a este proyecto.
+```powershell
+az login
+az account set --subscription "<SUBSCRIPTION_ID>"
+az extension add --name containerapp --upgrade
+az provider register --namespace Microsoft.App
+az provider register --namespace Microsoft.OperationalInsights
 
-## Seguridad
+$RG = "rg-fase2-sentimientos"
+$LOCATION = "eastus"
+$ACR = "acrfase2<cadenaunica>"
+$ENV = "aca-fase2-sentimientos"
+$IDENTITY = "id-fase2-containerapps"
+$API = "api-bertweet"
+$WEB = "web-bertweet"
 
-- Publicar únicamente el frontend; mantener API y red del modelo privadas.
-- Usar HTTPS, limitar orígenes/redes, proteger administración y aplicar mínimo privilegio.
-- Escanear dependencias e imágenes, actualizar parches y fijar versiones y digest de imágenes.
-- Definir límites de solicitudes, tamaño de texto, concurrencia y tiempos de espera.
-- No registrar texto personal sin una necesidad, consentimiento y política de retención.
-- Evitar secretos en Dockerfile, repositorio, variables visibles al cliente o logs.
+az group create --name $RG --location $LOCATION
+```
 
-## Mantenimiento y monitoreo
+El nombre de ACR debe ser globalmente único, en minúsculas y alfanumérico.
 
-Revisar logs y health checks, medir latencia/errores/memoria, actualizar imágenes de forma controlada, validar el identificador y licencia del modelo y conservar una estrategia de rollback. La caché debe tener permisos restringidos y espacio supervisado.
+### 2. Crear ACR privado y construir las imágenes
 
-## Costos y limitaciones por evaluar
+```powershell
+az acr create --name $ACR --resource-group $RG --location $LOCATION --sku Basic --admin-enabled false
+az acr config authentication-as-arm update --registry $ACR --status enabled
 
-Cotizar cómputo, memoria, almacenamiento de caché, transferencia, registro de imágenes, balanceador, dominio/TLS y monitoreo. La inferencia CPU puede tener latencia relevante y la descarga inicial consume red y disco; GPU eleva costos. BERTweet fue preentrenado para inglés de Twitter y su calidad en comentarios de aerolíneas o español no está garantizada por esta aplicación. Antes de uso real se requiere evaluación representativa y revisión de privacidad.
+az acr build --registry $ACR --image bertweet-backend:1.0 --file backend/Dockerfile .
+az acr build --registry $ACR --image sentiment-frontend:1.0 --file frontend/Dockerfile .
+```
+
+El punto final es el contexto de construcción en la raíz del repositorio. Usa tags inmutables o versionados; evita reemplazar imágenes ya desplegadas. La construcción remota con `az acr build` está documentada por Microsoft ([tutorial ACR](https://learn.microsoft.com/en-us/azure/container-registry/container-registry-tutorial-quick-task)).
+
+### 3. Asignar identidad administrada para descargar imágenes
+
+```powershell
+$identityInfo = az identity create --name $IDENTITY --resource-group $RG --location $LOCATION | ConvertFrom-Json
+$IDENTITY_ID = $identityInfo.id
+$PRINCIPAL_ID = $identityInfo.principalId
+$ACR_ID = az acr show --name $ACR --resource-group $RG --query id --output tsv
+
+az role assignment create --assignee-object-id $PRINCIPAL_ID --assignee-principal-type ServicePrincipal --role AcrPull --scope $ACR_ID
+```
+
+La identidad necesita el rol `AcrPull` y se asignará a ambas aplicaciones para extraer imágenes; no se habilitan credenciales de administrador. Considera el tiempo de propagación del rol. La configuración con identidad administrada se describe en [Microsoft Learn](https://learn.microsoft.com/en-us/azure/container-apps/managed-identity-image-pull).
+
+### 4. Crear el entorno de Container Apps
+
+```powershell
+az containerapp env create --name $ENV --resource-group $RG --location $LOCATION
+az containerapp env show --name $ENV --resource-group $RG --query properties.provisioningState --output tsv
+```
+
+Continúa cuando el estado sea `Succeeded`. El Environment proporciona el límite de red y resolución de nombres entre aplicaciones.
+
+### 5. Desplegar FastAPI con ingreso privado
+
+```powershell
+$REGISTRY = "$ACR.azurecr.io"
+az containerapp create --name $API --resource-group $RG --environment $ENV --image "$REGISTRY/bertweet-backend:1.0" --ingress internal --target-port 8000 --registry-server $REGISTRY --registry-identity $IDENTITY_ID --user-assigned $IDENTITY_ID --env-vars HF_HOME=/home/app/.cache/huggingface --cpu 2.0 --memory 4.0Gi --min-replicas 1 --max-replicas 1
+
+$API_FQDN = az containerapp show --name $API --resource-group $RG --query properties.configuration.ingress.fqdn --output tsv
+$API_URL = "http://" + $API_FQDN
+az containerapp show --name $API --resource-group $RG --query properties.configuration.ingress.external --output tsv
+```
+
+Confirma que `external` sea `false` y que el FQDN interno corresponda al mismo Environment. Conserva `API_URL` solo como variable del frontend.
+
+### 6. Desplegar Streamlit como único servicio público
+
+```powershell
+az containerapp create --name $WEB --resource-group $RG --environment $ENV --image "$REGISTRY/sentiment-frontend:1.0" --ingress external --target-port 8501 --allow-insecure false --registry-server $REGISTRY --registry-identity $IDENTITY_ID --user-assigned $IDENTITY_ID --env-vars "API_URL=$API_URL" --cpu 0.5 --memory 1.0Gi --min-replicas 1 --max-replicas 2
+
+$WEB_FQDN = az containerapp show --name $WEB --resource-group $RG --query properties.configuration.ingress.fqdn --output tsv
+"https://$WEB_FQDN"
+```
+
+Con `allow-insecure false`, el ingress público redirige HTTP a HTTPS. Solo el frontend tiene `external` habilitado; la API permanece privada.
+
+### 7. Validar una futura implementación
+
+```powershell
+az containerapp show --name $API --resource-group $RG --query properties.configuration.ingress --output json
+az containerapp show --name $WEB --resource-group $RG --query properties.configuration.ingress --output json
+az containerapp logs show --name $API --resource-group $RG --type console --tail 50
+az containerapp logs show --name $WEB --resource-group $RG --type console --tail 50
+Invoke-WebRequest -Uri "https://$WEB_FQDN"
+```
+
+Comprueba que FastAPI esté en ingreso interno, Streamlit en ingreso externo con el puerto 8501 y HTTP inseguro deshabilitado. Revisa los logs de carga del modelo y ejecuta `/health` y una predicción desde la UI. No abras el FQDN interno de FastAPI desde Internet. Guarda únicamente capturas y logs obtenidos en la ejecución futura, indicando fecha y entorno.
+
+## Variables, seguridad y mantenimiento
+
+- `API_URL`: FQDN privado de FastAPI, con `http://` interno.
+- `HF_HOME`: `/home/app/.cache/huggingface`; define ubicación de caché en el backend.
+- El modelo es público; no se necesita `HF_TOKEN`. Si esto cambia, usa Key Vault o secretos administrados; nunca Git, Dockerfile ni logs.
+- No publiques FastAPI ni el almacenamiento de caché. Restringe quién puede utilizar el frontend; el sitio público sin autenticación permite a visitantes solicitar inferencias.
+- Aplica mínimo privilegio, usa identidad administrada para ACR, fija tags de imagen, actualiza dependencias y supervisa CPU, memoria, reinicios, latencia y errores.
+- Decide si se requiere Azure Files para conservar pesos entre revisiones. La caché local de Docker no se traslada a Azure; almacenamiento compartido agrega costos y requiere validar permisos y concurrencia.
+- Define procedimiento de rollback a un tag de imagen anterior y una política de retención de logs que evite almacenar comentarios personales innecesariamente.
+
+## Costos, limitaciones y estado
+
+Evalúa precios por región de CPU/memoria, réplicas, ACR, Azure Files si se usa, Log Analytics, transferencia, dominio y controles perimetrales. No se incluyen importes porque dependen de región y uso; consulta la [calculadora de Azure](https://azure.microsoft.com/pricing/calculator/).
+
+BERTweet fue preparado para publicaciones de Twitter en inglés. Las salidas de los casos puntuales no demuestran calidad en español o comentarios de aerolíneas. Antes de uso real hace falta una evaluación representativa etiquetada y revisión de privacidad/licencia.
+
+**Estado:** este manual describe únicamente un procedimiento futuro. No se ejecutaron comandos de Azure ni se realizó un despliegue.

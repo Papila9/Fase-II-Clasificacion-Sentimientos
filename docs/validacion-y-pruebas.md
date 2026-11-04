@@ -6,7 +6,7 @@ Registrar los casos diseñados para comprobar validaciones, formato de API y com
 
 ## Entorno de pruebas
 
-Ejecución observada el 2026-11-02 en Python 3.13.3 con pytest 8.3.4, FastAPI 0.115.6, httpx 0.28.1 y Pydantic 2.14.2. Las pruebas de API usan un analizador falso y no descargan pesos de Hugging Face. La prueba del cliente HTTP simula la respuesta del backend. Docker CLI 29.9.2 y Docker Compose 5.6.1 están instalados. `docker compose config` validó correctamente el archivo. La imagen de ejecución propuesta usa Python 3.11.
+Ejecución automatizada repetida el 2026-11-03 con Python del entorno virtual. Las pruebas de API usan un analizador falso y no descargan pesos de Hugging Face. La prueba del cliente HTTP simula la respuesta del backend. Docker Engine 29.9.2 estaba disponible y `docker compose config --quiet` terminó correctamente. La imagen de ejecución usa Python 3.11.
 
 ## Casos de prueba
 
@@ -34,13 +34,15 @@ Ejecución observada el 2026-11-02 en Python 3.13.3 con pytest 8.3.4, FastAPI 0.
 
 Comando ejecutado: `.venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider` con el entorno virtual activo.
 
-Resultado automatizado observado el 2026-11-02: **13 passed, 1 warning**. El aviso es una `DeprecationWarning` de Starlette por el alias `anyio.abc.BlockingPortal`. Las pruebas cubren salud, respuesta válida simulada, validaciones de texto, límites, mapeo de etiquetas, excepción simulada del analizador y llamada del cliente HTTP Streamlit.
+Resultado automatizado observado el 2026-11-03: **13 passed, 1 warning**. El aviso es una `DeprecationWarning` de Starlette por el alias `anyio.abc.BlockingPortal`. Las pruebas cubren salud, respuesta válida simulada, validaciones de texto, límites, mapeo de etiquetas, excepción simulada del analizador y llamada del cliente HTTP Streamlit.
 
 La ejecución real de Compose construyó las imágenes y arrancó los dos servicios. El backend informó `model_loaded: true`. Se probó desde el contenedor frontend la conectividad a `http://backend:8000/health` (HTTP 200) y se envió una predicción real a `/predict` (HTTP 200; `Positivo`, `POS`, puntuación `0.9918472766876221`). Inicialmente Streamlit no era accesible desde el host: el puerto solicitado no aparecía publicado. Se añadió `frontend-ingress` para conectar el frontend a una red bridge además de `app-internal`; se recreó únicamente el frontend. Después `docker compose ps` reportó `127.0.0.1:8501->8501/tcp`, `http://localhost:8501` respondió HTTP 200 y una clasificación iniciada en el navegador mostró `Positivo`, `POS` y `99.2%`. El backend y el volumen de caché no se recrearon ni eliminaron durante el ajuste de red.
 
 ## Casos extremos
 
-Se cubren texto vacío, espacios, campo ausente, tipo incorrecto, límite exacto y exceso de longitud, además de excepción durante inferencia (simulada). Quedan para validación manual Unicode/emojis, textos muy largos con truncamiento por tokens, descarga fallida del Hub y respuesta lenta/interrupción de API.
+El 2026-11-03 se ejecutó `scripts/pruebas_extremas.py` contra la API real en Docker: **23 casos**, con **23 códigos HTTP esperados y 0 discrepancias**. Se incluyeron inglés, español, sarcasmo, emojis, Unicode, texto largo, 5,000 y 5,001 caracteres, entrada vacía, espacios, campo ausente, tipo incorrecto, JSON inválido y cuerpo HTTP vacío. C23 envió cero bytes. Los resultados HTTP y las salidas reales están en [resultados_pruebas_extremas.md](../resultados_pruebas_extremas.md).
+
+C06 (frase negativa en español → NEU) y C11 (emojis positivos aislados → NEU) son observaciones del modelo, no errores de API. El texto largo fue aceptado, pero la batería no inspeccionó directamente los tokens que recibió el modelo; la medición instrumental de truncamiento a 128 tokens queda pendiente.
 
 ## Evidencias disponibles
 
@@ -48,4 +50,4 @@ El proyecto incluye casos automatizados; la salida de pytest es evidencia de la 
 
 ## Conclusiones
 
-La suite del contrato HTTP, la configuración de Compose, la carga del modelo, una predicción real y el flujo desde la interfaz Streamlit se comprobaron. Queda pendiente la prueba específica del truncamiento a 128 tokens con un texto largo y una evaluación sistemática de calidad del modelo; esta ejecución no pretende medir precisión ni generalización.
+La suite automatizada simulada, la configuración de Compose, la salud y carga del modelo, una predicción real y el flujo desde Streamlit se comprobaron. La batería extrema real confirmó los códigos HTTP esperados para los 23 casos; C06 y C11 muestran posibles limitaciones en español y en entradas solo con emojis. Quedan pendientes la inspección directa del truncamiento a 128 tokens y una evaluación sistemática con datos etiquetados. Estas pruebas no miden precisión ni exactitud.
